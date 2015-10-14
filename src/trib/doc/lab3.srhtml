@@ -1,0 +1,135 @@
+<%= pagetop("CSE 223B Labs") %>
+
+<style type="text/css">
+    div.labbody {
+        max-width: 900px;
+    }
+
+    ul.labs {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 120%;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    ul.labs li {
+        display: inline-block;
+        margin-right: 20px;
+    }
+
+    code, tt {
+      margin: 0 2px;
+      padding: 0 5px;
+      white-space: nowrap;
+      border: 1px solid #eaeaea;
+      background-color: #f8f8f8;
+      border-radius: 3px;
+    }
+     
+    pre code {
+      margin: 0;
+      padding: 0;
+      white-space: pre;
+      border: none;
+      background: transparent;
+    }
+     
+    .highlight pre {
+      background-color: #f8f8f8;
+      border: 1px solid #cccccc;
+      font-size: 13px;
+      line-height: 19px;
+      overflow: auto;
+      padding: 6px 10px;
+      border-radius: 3px;
+    }
+     
+    pre {
+      background-color: #f8f8f8;
+      border: 1px solid #cccccc;
+      font-size: 13px;
+      line-height: 19px;
+      overflow: auto;
+      padding: 6px 10px;
+      border-radius: 3px;
+    }
+     
+    pre code, pre tt {
+      background-color: transparent;
+      border: none;
+    }
+</style>
+<link rel="stylesheet" href="gfm.css">
+
+
+<ul class="labs">
+    <li><a href="labs.html">Lab Home</a></li>
+    <li><a href="lab1.html">Lab 1</a></li>
+    <li><a href="lab2.html">Lab 2</a></li>
+    <li><a href="lab3.html">Lab 3</a></li>
+</ul>
+
+<div class="labbody">
+<h2 id="lab-3">Lab 3</h2>
+<p>Welcome to Lab 3. The goal of this lab is to take the bin storage that we implemented in Lab 2 and make it fault-tolerant.</p>
+<p>Lab 3 can be submitted in teams of up to 3 people.</p>
+<h2 id="get-your-repo-up-to-date">Get Your Repo Up-to-date</h2>
+<p>Hopefully no changes have been made, but just in case, update your repository.</p>
+<pre><code>$ cd ~/gopath/src/trib
+$ git branch lab3
+$ git checkout lab3
+$ git pull /classes/cse223b/sp14/labs/trib lab3</code></pre>
+<p>This should be a painless update.</p>
+<p>Note that we don't provide great unit tests to test fault tolerance (as it's hard to spawn and kill processes from within unit tests). Make sure you test this sufficiently using a testing mechanism of your own design.</p>
+<h2 id="system-scale-and-failure-model">System Scale and Failure Model</h2>
+<p>There could be up to 300 backends. Backends may join and leave at will, but you can assume that at any time there will be at least one backend online (so that your system is functional). Your design is required to be fault-tolerant where if there are at least three backends online at all times, there will be no data loss. You can assume that each backend join/leave event will have a time interval of at least 30 seconds in between, and this time duration will be enough for you to migrate storage.</p>
+<p>There will be at least 1 and up to 10 keepers. Keepers may join and leave at will, but at any time there will be at least 1 keeper online. (Thus, if there is only one keeper, it will not go offline.) Also, you can assume that each keeper join/leave event will have a time interval of at least 1 minute in between. When a process 'leaves', assumee that the process is killed-- everything in that process will be lost, and it will not have an opportunity to clean up.</p>
+<p>When keepers join, they join with the same <code>Index</code> as last time, although they've lost any other state they may have saved. Each keeper will receive a new <code>Id</code> in the <code>KeeperConfig</code>.</p>
+<p>Initially, we will start at least one backend, and then at least one keeper. At that point, the keeper should send <code>true</code> to the <code>Ready</code> channel and a frontend should be able to issue <code>BinStorage</code> calls.</p>
+<h2 id="consistency-model">Consistency Model</h2>
+<p>To tolerate failures, you have to save the data of each key in multiple places. To keep things achievable, we have to slightly relax the consistency model, as follows.</p>
+<p><code>Clock()</code> and the key-value calls (<code>Set()</code>, <code>Get()</code> and <code>Keys()</code>) will keep the same semantics as before.</p>
+<p>When concurrent <code>ListAppend()</code>s happen, calls to <code>ListGet()</code> might result in values that are currently being added, and may appear in arbitrary order. However, after all concurrent <code>ListAppend()</code>s return, <code>ListGet()</code> should always return the list with a consistent order.</p>
+<p>Here is an example of an valid call and return sequence:</p>
+<ul>
+<li>Initially, the list <code>&quot;k&quot;</code> is empty.</li>
+<li>A invokes <code>ListAppend(&quot;k&quot;, &quot;a&quot;)</code></li>
+<li>B invokes <code>ListAppend(&quot;k&quot;, &quot;b&quot;)</code></li>
+<li>C calls <code>ListGet(&quot;k&quot;)</code> and gets <code>[&quot;b&quot;]</code>. Note that <code>&quot;b&quot;</code> appears first in the list here.</li>
+<li>D calls <code>ListGet(&quot;k&quot;)</code> and gets <code>[&quot;a&quot;, &quot;b&quot;]</code>, note that although <code>&quot;b&quot;</code> appeared first last time, it appears at the second position in the list now.</li>
+<li>A's <code>ListAppend()</code> call returns</li>
+<li>B's <code>ListAppend()</code> call returns</li>
+<li>C calls <code>ListGet(&quot;k&quot;)</code> again and gets <code>[&quot;a&quot;, &quot;b&quot;]</code></li>
+<li>D calls <code>ListGet(&quot;k&quot;)</code> again and gets <code>[&quot;a&quot;, &quot;b&quot;]</code></li>
+</ul>
+<p><code>ListRemove()</code> removes all matched values that are appended into the list in the past, and sets the <code>n</code> field properly. When (and only when) concurrent <code>ListRemove()</code> on the same key and value is called, it is okay to 'double count' elements being removed.</p>
+<p><code>ListKeys()</code> keeps the same semantics.</p>
+<h2 id="entry-functions">Entry Functions</h2>
+<p>The entry functions will remain exactly the same as they are in Lab 2. The only thing that will change is that there may be multiple keepers listed in the <code>KeeperConfig</code>.</p>
+<h2 id="additional-assumptions">Additional Assumptions</h2>
+<ul>
+<li>No network errors; when a TCP connection is lost (RPC client returning <code>ErrShutdown</code>), you can assume that the RPC server crashed.</li>
+<li>When a bin-client, backend, or keeper is killed, all data in that process will be lost; nothing will be carried over a respawn.</li>
+<li>It will take less than 20 seconds to read all data stored on a backend and write it to another backend.</li>
+</ul>
+<h2 id="requirements">Requirements</h2>
+<ul>
+<li>Although you might change how data is stored in the backends, your implementation should pass all past test cases, which means your system should be functional with a single backend.</li>
+<li>If there are at least three backends online, there should never be any data loss. Note that the set of three backends might change over time, so long as there are at least three at any given moment.</li>
+<li>Assuming there are backends online, storage function calls always return without error, even when a node and/or a keeper just joined or left.</li>
+</ul>
+<h2 id="building-hints">Building Hints</h2>
+<ul>
+<li>You can use the logging techniques described in class to store everything (in lists on the backends, even for values).</li>
+<li>Let the keeper(s) keep track on the status of all the nodes, and do the data migration when a backend joins or leaves.</li>
+<li>Keepers should also keep track of the status of each other.</li>
+</ul>
+<p>For the ease of debugging, you can maintain some log messages (by using <code>log</code> package, or by writing to a TCP socket or a log file). However, for the convenience of grading, please turn them off by default when you turn in your code.</p>
+<p>Also, try to distribute yourselves evenly across the lab machines. If everyone uses <code>vm143</code>, it'll be unhappy.</p>
+<h2 id="turning-in">Turning In</h2>
+<p>If you are submitting as a team, please create a file called <code>teammates</code> under the root of <code>triblab</code> repo that lists the login ids of the members of your team, each on its own line.</p>
+<p>Make sure that you have committed every piece of your code (including the <code>teammates</code> file) into the <code>triblab</code> repository. Then just type <code>make turnin-lab3</code> under the root of your repository.</p>
+<h2 id="happy-lab-3.--">Happy Lab 3. :-)</h2>
+</div>
+<%= pagebottom() %>

@@ -1,0 +1,193 @@
+<%= pagetop("CSE 223B Labs") %>
+
+<style type="text/css">
+    div.labbody {
+        max-width: 900px;
+    }
+
+    ul.labs {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 120%;
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    ul.labs li {
+        display: inline-block;
+        margin-right: 20px;
+    }
+
+    code, tt {
+      margin: 0 2px;
+      padding: 0 5px;
+      white-space: nowrap;
+      border: 1px solid #eaeaea;
+      background-color: #f8f8f8;
+      border-radius: 3px;
+    }
+     
+    pre code {
+      margin: 0;
+      padding: 0;
+      white-space: pre;
+      border: none;
+      background: transparent;
+    }
+     
+    .highlight pre {
+      background-color: #f8f8f8;
+      border: 1px solid #cccccc;
+      font-size: 13px;
+      line-height: 19px;
+      overflow: auto;
+      padding: 6px 10px;
+      border-radius: 3px;
+    }
+     
+    pre {
+      background-color: #f8f8f8;
+      border: 1px solid #cccccc;
+      font-size: 13px;
+      line-height: 19px;
+      overflow: auto;
+      padding: 6px 10px;
+      border-radius: 3px;
+    }
+     
+    pre code, pre tt {
+      background-color: transparent;
+      border: none;
+    }
+</style>
+<link rel="stylesheet" href="gfm.css">
+
+
+<ul class="labs">
+    <li><a href="labs.html">Lab Home</a></li>
+    <li><a href="lab1.html">Lab 1</a></li>
+    <li><a href="lab2.html">Lab 2</a></li>
+    <li><a href="lab3.html">Lab 3</a></li>
+</ul>
+
+<div class="labbody">
+<h2 id="machines">Machines</h2>
+<p>We have set up a cluster of 10 machines. You should use these for all of the lab assignments:</p>
+<ul id="machine_list"></ul>
+
+<script>
+function shuffle(array) {
+    var currentIndex = array.length, temporaryValue, randomIndex ;
+    while (0 !== currentIndex) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex -= 1;
+        temporaryValue = array[currentIndex];
+        array[currentIndex] = array[randomIndex];
+        array[randomIndex] = temporaryValue;
+    }
+    return array;
+}
+vms = ["vm143", "vm144", "vm145", "vm146", "vm147",
+       "vm148", "vm149", "vm150", "vm151", "vm152"];
+vms = shuffle(vms);
+
+for (var i = 0; i < vms.length; ++i) {
+    var vm = vms[i];
+    var node = document.createElement("li");
+    var textnode = document.createTextNode(vm + ".sysnet.ucsd.edu");
+    node.appendChild(textnode);
+    document.getElementById("machine_list").appendChild(node);
+}
+</script>
+
+
+<p>They are all available exclusively via SSH.</p>
+<h2 id="programming-language">Programming Language</h2>
+<p>You will write the labs in Google's <a href="http://golang.org">golang</a>. It is a young language with a syntax somewhere between C/C++ and Python. It comes with a very rich standard library, and language-level support for light-weight but powerful concurrency semantics with <em>go routines</em> and <em>channels</em>.</p>
+<p>Here is some key documentation on the language:</p>
+<ul>
+<li><a href="http://golang.org/doc/">Go Language Documentation Page</a></li>
+<li><a href="http://golang.org/doc/effective_go.html">Effective Go</a></li>
+<li><a href="http://golang.org/ref/spec">Go Language Spec</a></li>
+<li><a href="https://tour.golang.org/">Go Tutorial</a></li>
+</ul>
+<p>You should be able to find a lot of documents about the Go language on the web, especially from the official site. We highly recommend the official Go tutorial (or &quot;Tour&quot;) linked above.</p>
+<ul>
+<li>Go code is organized into many separate <em>packages</em>.</li>
+<li>Unlike C/C++, when defining a <em>variable</em>, the <em>type</em> of it is written after the variable name.</li>
+<li>Go language has pointers, but has no pointer arithmetic. For example, you cannot increase a pointer by 1 to point the next element in memory.</li>
+<li>Go language has fixed length <em>arrays</em>, but most of the time people use <em>slices</em>, which are sliced views of an underlying array that are often implicitly declared. Slices feel very much like Python lists.</li>
+<li><em>maps</em> are built-in hash-based dictionaries.</li>
+<li>A function can have multiple return values.</li>
+<li>Exceptions are called <code>panic</code> and <code>recover</code>. However <code>panic</code> should only be used in dire cases. Error handling should be done with returned <code>Error</code> structs.</li>
+<li><code>for</code> is the only looping mechanism.</li>
+<li><em>Foreach</em> is implemented with the <code>range</code> keyword.</li>
+<li>Semicolons at the end of statements are optional, but discouraged.</li>
+<li>Variables are garbage collected. The language is hence type safe and pointer safe. When you have a pointer, the content it points to is always valid.</li>
+<li>Any identifier that starts with a capital letter is <em>public</em> and visible to other packages; others are <em>private</em> and only visible inside its own package.</li>
+<li><em>Inheritance</em> is done by compositions of anonymous members.</li>
+<li>Virtual functions are bound via <em>interfaces</em>. Unlike Java, <em>interface</em> does not require explicit binding (via the <em>implements</em> keyword). As long as the type has the set of methods implemented, it can be automatically assigned to an inteface. As a result, it is okay to write the implementation first and declare the interface afterwards.</li>
+<li>Circular package dependency is not allowed.</li>
+</ul>
+<h2 id="the-tribbler-story">The Tribbler Story</h2>
+<p>Some cowboy programmer wrote a simple online microblogging service called Tribbler and, leveraging the power of the Web, it becomes quite popular. However, the program runs in a single process on a single machine; it does not scale, cannot support many concurrent connections, and is vulnerable to machine crashes. Knowing that you are taking the distributed computing system course at UCSD, he asks you for help. You answered his call and are starting work on this project.</p>
+<p>Your goal is to refactor Tribbler into a distributed system, making it more robust and scalable.</p>
+<h2 id="getting-started">Getting Started</h2>
+<p>The Tribbler project is written in golang and stored in a git repository. To get started, run these commands from the command line on one of the course machines:</p>
+<pre><code>$ cd                       # go to your home directory
+$ mkdir -p gopath/src      # the path you use for storing golang src
+$ cd gopath/src
+$ git clone /class/labs/trib
+$ git clone /class/labs/triblab
+$ export GOPATH=~/gopath
+$ go install ./...</code></pre>
+<p>You can do some basic testing to see if the framework is in good shape:</p>
+<pre><code>$ go test ./trib/...</code></pre>
+<p>The basic Tribbler service should now be installed on the system from your home directory. Let's give it a try:</p>
+<pre><code>$ ~/gopath/bin/trib-front -init -addr=:rand</code></pre>
+<p>The program should show the URL it is running under (it uses a randomly generated port).</p>
+<p>Open your browser and type in the given address. For example, if the machine you logged into was <code>vm151.sysnet.ucsd.edu</code>, and Tribbler is running on port 27944, then open <code>http://vm151.sysnet.ucsd.edu:27944</code>. You should see a list of Tribbler users. You can view their tribs and login as them (with no authentication).</p>
+<p>This is how Tribbler looks to users. It is a single web page that performs AJAX calls (a type of web-based RPC) to the back-end web server. The webserver then in turn calls the Tribbler logic functions and returns the results back to the Web page in the browser.</p>
+<p>If you find it difficult to access the lab machines outside of UCSD's campus, you need to setup the UCSD VPN or use an SSH tunnel. Information about the former is available <a href="http://blink.ucsd.edu/technology/network/connections/off-campus/VPN/">here</a>.</p>
+<h2 id="source-code-organization">Source Code Organization</h2>
+<p>The source code in the <code>trib</code> package repository is organized as follows:</p>
+<ul>
+<li><code>trib</code> defines the common Tribbler interfaces and data structures.</li>
+<li><code>trib/tribtest</code> provides several basic test cases for the interfaces.</li>
+<li><code>trib/cmd/trib-front</code> is the web-server launcher that you run.</li>
+<li><code>trib/cmd/kv-client</code> is a command line key-value RPC client for quick testing.</li>
+<li><code>trib/cmd/kv-server</code> runs a key-value service as an RPC server.</li>
+<li><code>trib/cmd/bins-client</code> is a bin storage service client.</li>
+<li><code>trib/cmd/bins-back</code> is a bin storage service back-end launcher.</li>
+<li><code>trib/cmd/bins-keeper</code> is a bin stroage service keeper launcher.</li>
+<li><code>trib/cmd/bins-mkrc</code> generates a bin storage configuration file.</li>
+<li><code>trib/entries</code> defines several helper functions for constructing a Tribbler front-end or a back-end.</li>
+<li><code>trib/ref</code> is a reference monolithic implementation of the <code>trib.Server</code> interface. All the server logic runs in one single process. It is not scalable and is vulnerable to machine crashes.</li>
+<li><code>trib/store</code> contains an in-memory thread-safe implementation of the <code>trib.Store</code> interface. We will use this as the basic building block for our back-end storage system.</li>
+<li><code>trib/randaddr</code> provides helper functions that generate a network address with a random port number.</li>
+<li><code>trib/local</code> provides helper functions that check if an address belongs to the machine that the program is running.</li>
+<li><code>trib/colon</code> provides helper functions that escape and unescape colons in a string.</li>
+<li><code>trib/www</code> contains the static files (html, css, js, etc.) for the web front-end.</li>
+</ul>
+<p><strong>Don't be scared by the number of packages</strong>. Most of the packages are very small, and you don't have to interact with all of them at once. All Go language files under the <code>trib</code> directory are less than 2500 lines in total (the beauty of Go!), so these packages aren't huge and intimidating.</p>
+<p>Through the entire lab, you do not need to (and should not) modify anything in the <code>trib</code> repository. If you feel that you have to change some code to complete your lab, please first discuss it with the TA. You are always welcome to read the code in the <code>trib</code> repository. If you find a bug and report it, you might get some bonus credit.</p>
+<h2 id="your-job">Your Job</h2>
+<p>Your job is to complete the implementation of the <code>triblab</code> package. It is in the second repo that we checked out.</p>
+<p>It would be good practice for you to periodically commit your code into your <code>triblab</code> git repo. <strong>Only commited files in that <code>triblab</code> will be submitted for grading</strong>, so even if you aren't using the git repository for your own version control (pro tip: use it), you will need to commit all of your files at least once right before before turning in. If you've never used git before, make sure you understand what this means before trying to submit your code.</p>
+<h2 id="lab-roadmap">Lab Roadmap</h2>
+<ul>
+<li><strong>Lab 1</strong>. Wrap the key-value storage service with RPC so that a remote client can store data remotely.</li>
+<li><strong>Lab 2</strong>. Reimplement the Tribbler service, splitting the current Tribbler logic into stateless scalable front-ends and scalable key-value store back-ends. The front-ends will call the back-ends via the RPC mechanism implemented in Lab 1. When this lab is done, you will have made both the front-end and the back-end scalable.</li>
+<li><strong>Lab 3</strong>. We make the back-ends fault-tolerent with replication and by using techniques like distributed hash tables. At the end of this lab, back-end servers can join, leave, or be killed, without affecting the service.</li>
+</ul>
+<p>By the end of the labs, you will have an implementation of Tribbler that is scalable and fault-tolerant.</p>
+<h2 id="misc">Misc</h2>
+<p>Go has expectations about environment variables. For convenience, you might set these variables in your <code>.bashrc</code> and/or <code>.bash_profile</code> files so that you don't have to execute the commands every time:</p>
+<pre><code>export GOPATH=$HOME/gopath
+export PATH=$PATH:$GOPATH/bin</code></pre>
+<p>We should have Vim and Emacs installed on the machines. If you need to install other utility packages, ask the TA. Note that you do not have <code>sudo</code> permissions on any of the machines; any <code>sudo</code> attempt will be automatically reported, so please don't even try it.</p>
+<p>You could also write your code on your own machine if you want to. See Go language's <a href="http://golang.org/doc/install">install</a> page for more information. However, you should test and submit your code on the lab machines.</p>
+<h2 id="ready">Ready?</h2>
+<p>If you feel comfortable with the lab setup, continue on to <a href="./lab1.html">Lab1</a>.</p>
+</div>
+<%= pagebottom() %>
